@@ -19,15 +19,19 @@ impl Pointer {
 }
 
 
-#[derive(Debug, PartialEq)]
-struct Node<T> {
+#[derive(Debug, PartialEq, Copy, Clone)]
+struct Node<T>
+    where T: Copy
+{
     prev: Pointer,
     next: Pointer,
     elem: T,
 }
 
 
-impl<T> Node<T> {
+impl<T> Node<T>
+    where T: Copy
+{
     pub fn new(elem: T) -> Node<T> {
         Node {
             prev: Pointer::null(),
@@ -39,13 +43,27 @@ impl<T> Node<T> {
 
 
 #[derive(Debug, PartialEq)]
-struct LinkedList<T> {
+struct LinkedList<T>
+    where T: Copy
+{
     items: Vec<Node<T>>,
+    freed: Vec<Pointer>,
     head: Pointer,
     tail: Pointer,
 }
 
-impl<T> Index<Pointer> for LinkedList<T> {
+impl<T> Index<Pointer> for Vec<T> {
+    type Output = T;
+
+    fn index(&self, index: Pointer) -> &T {
+        &self[index.0]
+    }
+}
+
+
+impl<T> Index<Pointer> for LinkedList<T>
+    where T: Copy
+{
     type Output = Node<T>;
 
     fn index(&self, index: Pointer) -> &Node<T> {
@@ -53,27 +71,38 @@ impl<T> Index<Pointer> for LinkedList<T> {
     }
 }
 
-impl<T> IndexMut<Pointer> for LinkedList<T> {
+impl<T> IndexMut<Pointer> for LinkedList<T>
+    where T: Copy
+{
     fn index_mut(&mut self, index: Pointer) -> &mut Node<T> {
         &mut self.items[index.0]
     }
 }
 
 
-impl<T> LinkedList<T> {
+impl<T> LinkedList<T>
+    where T: Copy
+{
     pub fn new() -> LinkedList<T> {
         LinkedList {
             items: Vec::new(),
+            freed: Vec::new(),
             head: Pointer::null(),
             tail: Pointer::null(),
         }
     }
 
     fn insert(&mut self, node: Node<T>) -> Pointer {
-        self.items.push(node);
-        Pointer(self.items.len() - 1)
+        if let Some(ptr) = self.freed.pop() {
+            self[ptr] = node;
+            ptr
+        } else {
+            self.items.push(node);
+            Pointer(self.items.len() - 1)
+        }
     }
 
+    /// Pushing an item at the end of the `LinkedList`
     pub fn push_back(&mut self, elem: T) -> Pointer {
         if self.tail.is_null() {
             assert!(self.head.is_null());
@@ -83,24 +112,74 @@ impl<T> LinkedList<T> {
             self.head = ptr;
             ptr
         } else {
-            Pointer::null()
+            self.insert_after(self.tail, elem)
         }
     }
 
+    /// Making a new item the first of the `LinkedList`
     pub fn push_front(&mut self, elem: T) -> Pointer {
-        unimplemented!()
+        if self.head.is_null() {
+            assert!(self.tail.is_null());
+            self.push_back(elem)
+        } else {
+            self.insert_before(self.head, elem)
+        }
     }
 
     pub fn insert_after(&mut self, ptr: Pointer, elem: T) -> Pointer {
-        unimplemented!()
+        let next = self[ptr].next;
+        let node = self.insert(
+            Node {
+                next: next,
+                prev: ptr,
+                elem: elem,
+            });
+        self[ptr].next = node;
+        if next.is_null() {
+            self.tail = node;
+        } else {
+            self[next].prev = node;
+        }
+        node
     }
 
     pub fn insert_before(&mut self, ptr: Pointer, elem: T) -> Pointer {
-        unimplemented!()
+        let prev = self[ptr].prev;
+        let node = self.insert(
+            Node {
+                next: ptr,
+                prev: prev,
+                elem: elem,
+            });
+        self[ptr].prev = node;
+        if prev.is_null() {
+            self.head = node;
+        } else {
+            self[prev].next = node;
+        }
+        node
     }
 
     pub fn remove(&mut self, ptr: Pointer) -> T {
-        unimplemented!()
+        let node = self[ptr];
+        let prev = node.prev;
+        let next = node.next;
+        let elem = node.elem;
+
+        if prev.is_null() {
+            self.head = next;
+        } else {
+            self[prev].next = next;
+        }
+        if next.is_null() {
+            self.tail = prev;
+        } else {
+            self[next].prev = prev;
+        }
+
+        self.freed.push(ptr);
+
+        elem
     }
 
 }
@@ -131,6 +210,7 @@ mod tests {
         assert_eq!(ll,
                    LinkedList {
                        items: Vec::new(),
+                       freed: Vec::new(),
                        head: Pointer::null(),
                        tail: Pointer::null(),
                    });
@@ -147,6 +227,7 @@ mod tests {
                            next: Pointer::null(),
                            elem: 3,
                        }],
+                       freed: Vec::new(),
                        head: Pointer(0),
                        tail: Pointer(0),
                    });
@@ -162,16 +243,17 @@ mod tests {
                    LinkedList {
                        items: vec![
                            Node {
-                               prev: Pointer::null(),
-                               next: Pointer(1),
-                               elem: 2,
-                           },
-                           Node {
-                               prev: Pointer(0),
+                               prev: Pointer(1),
                                next: Pointer::null(),
                                elem: 3,
                            },
+                           Node {
+                               prev: Pointer::null(),
+                               next: Pointer(0),
+                               elem: 2,
+                           },
                        ],
+                       freed: Vec::new(),
                        head: Pointer(1),
                        tail: Pointer(0),
                    });
@@ -189,6 +271,7 @@ mod tests {
                            next: Pointer::null(),
                            elem: 3,
                        }],
+                       freed: Vec::new(),
                        head: Pointer(0),
                        tail: Pointer(0),
                    });
@@ -202,11 +285,19 @@ mod tests {
         ll.remove(p);
         assert_eq!(ll,
                    LinkedList {
-                       items: vec![Node {
-                           prev: Pointer::null(),
-                           next: Pointer::null(),
-                           elem: 3,
-                       }],
+                       items: vec![
+                           Node {
+                               prev: Pointer::null(),
+                               next: Pointer::null(),
+                               elem: 3,
+                           },
+                           Node {
+                               prev: Pointer(0),
+                               next: Pointer::null(),
+                               elem: 5,
+                           },
+                       ],
+                       freed: vec![Pointer(1)],
                        head: Pointer(0),
                        tail: Pointer(0),
                    });
@@ -231,6 +322,7 @@ mod tests {
                                elem: 4,
                            },
                        ],
+                       freed: Vec::new(),
                        head: Pointer(0),
                        tail: Pointer(1),
                    });
