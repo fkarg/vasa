@@ -1,4 +1,6 @@
 # vasa
+[![Build Status](https://travis-ci.com/fkarg/vasa.svg?branch=master)](https://travis-ci.com/fkarg/vasa)
+
 Implementation of advanced algorithms for educational purposes
 
 
