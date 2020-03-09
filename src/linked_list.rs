@@ -199,13 +199,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_node_singleton() {
+    fn singleton() {
         let node = Node::new(0);
         assert_eq!(node.elem, 0);
     }
 
     #[test]
-    fn test_ll_empty() {
+    fn empty() {
         let ll: LinkedList<i32> = LinkedList::new();
         assert_eq!(ll,
                    LinkedList {
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ll_pushfront() {
+    fn pushfront() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         ll.push_front(3);
         assert_eq!(ll,
@@ -235,7 +235,7 @@ mod tests {
 
 
     #[test]
-    fn test_ll_pushfront_pushfront() {
+    fn pushfront_pushfront() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         ll.push_front(3);
         ll.push_front(2);
@@ -261,7 +261,7 @@ mod tests {
 
 
     #[test]
-    fn test_ll_pushback() {
+    fn pushback() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         ll.push_back(3);
         assert_eq!(ll,
@@ -278,7 +278,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ll_pushback_pushback_remove() {
+    fn pushback_pushback_remove() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         ll.push_back(3);
         let p = ll.push_back(5);
@@ -304,7 +304,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ll_pushback_pushback() {
+    fn pushback_pushback() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         ll.push_back(3);
         ll.push_back(4);
@@ -330,7 +330,7 @@ mod tests {
 
 
     #[test]
-    fn test_ll_insertbefore() {
+    fn insertbefore() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         ll.push_back(3);
         let p = ll.push_back(5);
@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ll_insertafter() {
+    fn insertafter() {
         let mut ll: LinkedList<i32> = LinkedList::new();
         let p = ll.push_back(3);
         ll.push_back(5);
