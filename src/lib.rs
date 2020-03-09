@@ -1,6 +1,6 @@
 //* uncomment everything except current
-mod linked_list;
-mod 
+pub mod linked_list;
+pub mod fifo;
 
 // */
 
