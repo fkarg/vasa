@@ -25,6 +25,17 @@ impl<T> Index<usize> for BoundedFIFO<T>
 impl<T> BoundedFIFO<T>
     where T: Copy
 {
+    /// Creating a new `BoundedFifo` datastructure with size `n`.
+    ///
+    /// Bounded, because the underlying datastructure is actually a `Vec<T>`, however unlike the
+    /// traditionally bounded FIFO, it will grow dynamically. True to its name, it does First In,
+    /// First Out.
+    ///
+    /// # Example
+    /// ```
+    /// use vasa::fifo::BoundedFIFO;
+    /// let fifo = BoundedFIFO::<i32>::new(4);
+    /// ```
     pub fn new(n: usize) -> BoundedFIFO<T> {
         BoundedFIFO {
             b: Vec::with_capacity(n),
@@ -33,19 +44,62 @@ impl<T> BoundedFIFO<T>
         }
     }
 
+    /// Test if FIFO-Queue is empty.
+    ///
+    /// # Example
+    /// ```
+    /// use vasa::fifo::BoundedFIFO;
+    /// let fifo = BoundedFIFO::<i32>::new(4);
+    /// assert!(fifo.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.b.len() == 0
     }
 
+    /// Get reference to first element in queue.
+    ///
+    /// Panics if there is no first element.
+    ///
+    /// # Example
+    /// ```
+    /// use vasa::fifo::BoundedFIFO;
+    /// let mut fifo = BoundedFIFO::<i32>::new(4);
+    /// fifo.push_back(1);
+    /// fifo.push_back(2);
+    /// assert_eq!(fifo.first(), &1);
+    /// ```
+    ///
+    /// # Panics
+    /// If the queue is empty.
     pub fn first(&self) -> &T {
         assert!(self.b.len() > 0);
         &self[self.h]
     }
 
+    /// Return size of FIFO queue.
+    ///
+    /// # Example
+    /// ```
+    /// use vasa::fifo::BoundedFIFO;
+    /// let fifo = BoundedFIFO::<i32>::new(4);
+    /// assert_eq!(fifo.size(), 0);
+    /// ```
     pub fn size(&self) -> usize {
+        // self.b.len() is not sufficiently accurate
+        // since some elements could have been 'deleted' already
         (self.t - self.h) % self.b.capacity()
     }
 
+    /// Adding a new element to the queue.
+    ///
+    /// The 'end' location might vary, since partially a ringbuffer is used.
+    /// # Example
+    /// ```
+    /// use vasa::fifo::BoundedFIFO;
+    /// let mut fifo = BoundedFIFO::<i32>::new(4);
+    /// fifo.push_back(1);
+    /// fifo.push_back(2);
+    /// ```
     pub fn push_back(&mut self, elem: T) {
         if self.t == self.b.len() {
             self.b.push(elem);
@@ -63,6 +117,20 @@ impl<T> BoundedFIFO<T>
         self.t = (self.t + 1) % dbg!(self.b.capacity());
     }
 
+    /// Pop the first element from the queue.
+    ///
+    /// This actually does not remove the element, but simply regards the used memory as unused. It
+    /// is bound to be overwritten by `push_back` at some point.
+    ///
+    /// # Example
+    /// ```
+    /// use vasa::fifo::BoundedFIFO;
+    /// let mut fifo = BoundedFIFO::<i32>::new(4);
+    /// fifo.push_back(1);
+    /// fifo.push_back(2);
+    /// assert_eq!(fifo.pop_front(), Some(1));
+    /// assert_eq!(fifo.pop_front(), Some(2));
+    /// ```
     pub fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
             None
