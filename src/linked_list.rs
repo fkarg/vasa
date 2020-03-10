@@ -1,7 +1,13 @@
 use std::ops::{Index, IndexMut};
+use std::fmt;
 
-#[derive(Debug, PartialEq, Copy, Clone, Eq)]
-struct Pointer(usize);
+
+///! [`Node`]: struct.Node.html
+
+
+/// Index for [`Node`]s, with additional functionality.
+#[derive(PartialEq, Copy, Clone, Eq)]
+pub struct Pointer(usize);
 
 impl Pointer {
     /// `!0` is the largest possible `usize` value. We have other problems if we were to get that
@@ -19,19 +25,46 @@ impl Pointer {
 }
 
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-struct Node<T>
+impl fmt::Debug for Pointer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_null() {
+            write!(f, "p-")
+        } else {
+            write!(f, "p{}", self.0)
+        }
+    }
+}
+
+
+///! [`Pointer`]: struct.Pointer.html
+///! [`LinkedList`]: struct.LinkedList.html
+
+/// [`LinkedList`]-Element, referencing and indexed by [`Pointer`].
+#[derive(PartialEq, Copy, Clone)]
+pub struct Node<T>
     where T: Copy
 {
+    /// Pointer to the previous element (or null)
     prev: Pointer,
+    /// Pointer to the next element (or null)
     next: Pointer,
+    /// Actual element
     elem: T,
+}
+
+impl<T> fmt::Debug for Node<T>
+    where T: Copy + fmt::Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Node {:?} |{:?}|{:?}", self.elem, self.prev, self.next)
+    }
 }
 
 
 impl<T> Node<T>
     where T: Copy
 {
+    /// Creating a new `Node` based on an element. Not linked yet.
     pub fn new(elem: T) -> Node<T> {
         Node {
             prev: Pointer::null(),
@@ -42,8 +75,13 @@ impl<T> Node<T>
 }
 
 
+
+///! [`Pointer`]: struct.Pointer.html
+///! [`Node`]: struct.Node.html
+
+/// Main datastructure, organizing [`Node`]s with [`Pointer`]s.
 #[derive(Debug, PartialEq)]
-struct LinkedList<T>
+pub struct LinkedList<T>
     where T: Copy
 {
     items: Vec<Node<T>>,
@@ -83,6 +121,15 @@ impl<T> IndexMut<Pointer> for LinkedList<T>
 impl<T> LinkedList<T>
     where T: Copy
 {
+    /// Creating a new and empty `LinkedList`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use vasa::linked_list::LinkedList;
+    /// let ll: LinkedList<i32> = LinkedList::new();
+    /// // assert_eq!(format!("{:?}", ll), "LinkedList { items: [], freed: [], head: p-, tail: p- }".to_owned());
+    /// ```
     pub fn new() -> LinkedList<T> {
         LinkedList {
             items: Vec::new(),
@@ -92,6 +139,10 @@ impl<T> LinkedList<T>
         }
     }
 
+    /// Insert element in `LinkedList` and return a `Pointer` to the `Node`.
+    ///
+    /// Overwrites a deleted element first, if avaible. This is fine, because no pointer to the
+    /// previously used location exists any more from within the LinkedList.
     fn insert(&mut self, node: Node<T>) -> Pointer {
         if let Some(ptr) = self.freed.pop() {
             self[ptr] = node;
@@ -102,7 +153,19 @@ impl<T> LinkedList<T>
         }
     }
 
-    /// Pushing an item at the end of the `LinkedList`
+    /// Pushing an item at the end of the `LinkedList`.
+    ///
+    /// This includes re-setting the current Pointers.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use vasa::linked_list::LinkedList;
+    /// let mut ll: LinkedList<i32> = LinkedList::new();
+    /// ll.push_back(3);
+    /// ll.push_back(4);
+    /// // assert_eq!(format!("{:?}", ll), "LinkedList { items: [Node 3 |p-|p1, Node 4 |p0|p-], freed: [], head: p0, tail: p1 }".to_owned());
+    /// ```
     pub fn push_back(&mut self, elem: T) -> Pointer {
         if self.tail.is_null() {
             assert!(self.head.is_null());
@@ -117,6 +180,16 @@ impl<T> LinkedList<T>
     }
 
     /// Making a new item the first of the `LinkedList`
+    ///
+    /// # Example
+    /// ```
+    /// use std::fmt;
+    /// use vasa::linked_list::LinkedList;
+    /// let mut ll = LinkedList::new();
+    /// ll.push_front(3);
+    /// ll.push_front(4);
+    /// // assert_eq!(format!("{:?}", ll), "LinkedList { items: [Node 3 |p1|p-, Node 4 |p-|p0], freed: [], head: p1, tail: p0 }".to_owned());
+    /// ```
     pub fn push_front(&mut self, elem: T) -> Pointer {
         if self.head.is_null() {
             assert!(self.tail.is_null());
@@ -126,6 +199,18 @@ impl<T> LinkedList<T>
         }
     }
 
+    /// Insert Element after a certain other element.
+    ///
+    /// # Example
+    /// ```
+    /// use std::fmt;
+    /// use vasa::linked_list::LinkedList;
+    /// let mut ll = LinkedList::new();
+    /// let p = ll.push_front(3);
+    /// ll.push_front(4);
+    /// ll.insert_after(p, 5);
+    /// // assert_eq!(format!("{:?}", ll), "LinkedList { items: [Node 3 |p1|p2, Node 4 |p-|p0, Node 5 |p0|p-], freed: [], head: p1, tail: p2 }".to_owned());
+    /// ```
     pub fn insert_after(&mut self, ptr: Pointer, elem: T) -> Pointer {
         let next = self[ptr].next;
         let node = self.insert(
@@ -143,6 +228,18 @@ impl<T> LinkedList<T>
         node
     }
 
+    /// Insert Element after a certain other element.
+    ///
+    /// # Example
+    /// ```
+    /// use std::fmt;
+    /// use vasa::linked_list::LinkedList;
+    /// let mut ll = LinkedList::new();
+    /// ll.push_front(3);
+    /// let p = ll.push_front(4);
+    /// ll.insert_before(p, 5);
+    /// // assert_eq!(format!("{:?}", ll), "LinkedList { items: [Node 3 |p1|p-, Node 4 |p2|p0, Node 5 |p-|p1], freed: [], head: p2, tail: p0 }".to_owned());
+    /// ```
     pub fn insert_before(&mut self, ptr: Pointer, elem: T) -> Pointer {
         let prev = self[ptr].prev;
         let node = self.insert(
@@ -160,6 +257,19 @@ impl<T> LinkedList<T>
         node
     }
 
+    /// Remove `Node` at given position from linked list.
+    ///
+    /// Does not actually delete the Node, but removes all references to it and adds it's Pointer
+    /// to the 'freed' list. Before allocating new elements, freed Nodes get overwritten.
+    ///
+    /// # Example
+    /// ```
+    /// use vasa::linked_list::LinkedList;
+    /// let mut ll: LinkedList<i32> = LinkedList::new();
+    /// ll.push_back(3);
+    /// let p = ll.push_back(5);
+    /// ll.remove(p);
+    /// ```
     pub fn remove(&mut self, ptr: Pointer) -> T {
         let node = self[ptr];
         let prev = node.prev;
@@ -335,6 +445,29 @@ mod tests {
         ll.push_back(3);
         let p = ll.push_back(5);
         ll.insert_before(p, 4);
+        assert_eq!(ll,
+                   LinkedList {
+                       items: vec![
+                           Node {
+                               prev: Pointer::null(),
+                               next: Pointer(2),
+                               elem: 3,
+                           },
+                           Node {
+                               prev: Pointer(2),
+                               next: Pointer::null(),
+                               elem: 5,
+                           },
+                           Node {
+                               prev: Pointer(0),
+                               next: Pointer(1),
+                               elem: 4,
+                           },
+                       ],
+                       freed: Vec::new(),
+                       head: Pointer(0),
+                       tail: Pointer(1),
+                   });
     }
 
     #[test]
@@ -343,5 +476,28 @@ mod tests {
         let p = ll.push_back(3);
         ll.push_back(5);
         ll.insert_after(p, 4);
+        assert_eq!(ll,
+                   LinkedList {
+                       items: vec![
+                           Node {
+                               prev: Pointer::null(),
+                               next: Pointer(2),
+                               elem: 3,
+                           },
+                           Node {
+                               prev: Pointer(2),
+                               next: Pointer::null(),
+                               elem: 5,
+                           },
+                           Node {
+                               prev: Pointer(0),
+                               next: Pointer(1),
+                               elem: 4,
+                           },
+                       ],
+                       freed: Vec::new(),
+                       head: Pointer(0),
+                       tail: Pointer(1),
+                   });
     }
 }
