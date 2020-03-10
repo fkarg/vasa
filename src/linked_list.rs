@@ -1,3 +1,4 @@
+use core::iter::Iterator;
 use std::ops::{Index, IndexMut};
 use std::fmt;
 
@@ -95,6 +96,20 @@ impl<T> Index<Pointer> for Vec<T> {
 
     fn index(&self, index: Pointer) -> &T {
         &self[index.0]
+    }
+}
+
+
+impl<T> Iterator for LinkedList<T>
+    where T: Copy
+{
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.head.is_null() {
+            None
+        } else {
+            Some(self.remove(self.head))
+        }
     }
 }
 
@@ -499,5 +514,14 @@ mod tests {
                        head: Pointer(0),
                        tail: Pointer(1),
                    });
+    }
+
+    #[test]
+    fn iterator() {
+        let mut ll: LinkedList<i32> = LinkedList::new();
+        let p = ll.push_back(3);
+        ll.push_back(5);
+        ll.insert_after(p, 4);
+        assert_eq!(ll.into_iter().collect::<Vec<i32>>(), vec![3, 4, 5])
     }
 }
