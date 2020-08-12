@@ -23,7 +23,7 @@ impl PartialOrd for Cost {
 
 
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct State {
     cost: usize,
     position: usize,
@@ -98,26 +98,26 @@ pub fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Op
 }
 
 
-pub fn bidir_shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<Cost> {
+pub fn bidir_shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {
     // dist[node] = current shortest distance from `start` to `node`
-    let mut dist_f: Vec<_> = (0..adj_list.len()).map(|_| Cost(usize::MAX)).collect();
-    let mut dist_b: Vec<_> = (0..adj_list.len()).map(|_| Cost(usize::MAX)).collect();
+    let mut dist_f: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
+    let mut dist_b: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
 
-    let mut prio_f = PriorityQueue::new();
-    let mut prio_b = PriorityQueue::new();
+    let mut prio_f = BinaryHeap::new();
+    let mut prio_b = BinaryHeap::new();
 
     // We're at `start`, with a zero cost
-    dist_f[start] = Cost(0);
-    dist_b[goal] = Cost(0);
-    prio_f.push(start, Cost(0));
-    prio_b.push(goal, Cost(0));
+    dist_f[start] = 0;
+    dist_b[goal]  = 0;
+    prio_f.push(State { cost: 0, position: start });
+    prio_b.push(State { cost: 0, position: goal });
 
     while !prio_f.is_empty() { // && !prio_b.is_empty() {
         if let Some(res) = dijkstra_step(adj_list, goal, &mut prio_f, &mut dist_f) {
             return Some(res);
         }
         // dijkstra_step(adj_list, start, &mut prio_b, &mut dist_b);
-        print!("{:?}\n", prio_f);
+        println!("{:?}", prio_f);
     }
 
     None
@@ -126,12 +126,12 @@ pub fn bidir_shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize)
 
 fn dijkstra_step(adj_list: &Vec<Vec<Edge>>,
                  goal: usize,
-                 heap: &mut PriorityQueue<usize,Cost>,
-                 dist: &mut Vec<Cost>) 
-    -> Option<Cost> {
+                 heap: &mut BinaryHeap<State>,
+                 dist: &mut Vec<usize>) 
+    -> Option<usize> {
 
     // Examine the frontier with lower cost nodes first (min-heap)
-    if let Some((position, cost)) = heap.pop() {
+    if let Some(State { cost, position }) = heap.pop() {
         println!("I: {}, P: {:?}", position, cost);
         // We found a shortest path!
         if position == goal {
@@ -144,14 +144,12 @@ fn dijkstra_step(adj_list: &Vec<Vec<Edge>>,
         // For each node we can reach, see if we can find a way with
         // a lower cost going through this node
         for edge in &adj_list[position] {
-            let cost = cost + Cost(edge.cost);
+            let cost = cost + edge.cost;
 
             // If so, add it to the frontier and continue
-            if cost > dist[edge.node] {
-                // actually, reverse comparison, since order is reversed for cost.
-                // assert!((Cost(0) > Cost(2)) == true);
+            if cost < dist[edge.node] {
                 println!("{:?} < {:?} !", cost, dist[edge.node]);
-                heap.push(edge.node, cost);
+                heap.push(State { position: edge.node, cost });
                 // Relaxation, we have now found a better way
                 dist[edge.node] = cost;
             }
@@ -258,10 +256,10 @@ mod tests {
         // Node 4
         vec![]];
 
-    assert_eq!(bidir_shortest_path(&graph, 0, 1), Some(Cost(1)));
-    assert_eq!(bidir_shortest_path(&graph, 0, 3), Some(Cost(3)));
-    assert_eq!(bidir_shortest_path(&graph, 3, 0), Some(Cost(7)));
-    assert_eq!(bidir_shortest_path(&graph, 0, 4), Some(Cost(5)));
+    assert_eq!(bidir_shortest_path(&graph, 0, 1), Some(1));
+    assert_eq!(bidir_shortest_path(&graph, 0, 3), Some(3));
+    assert_eq!(bidir_shortest_path(&graph, 3, 0), Some(7));
+    assert_eq!(bidir_shortest_path(&graph, 0, 4), Some(5));
     assert_eq!(bidir_shortest_path(&graph, 4, 0), None);
     }
 
