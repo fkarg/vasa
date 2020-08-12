@@ -1,27 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-use priority_queue::PriorityQueue;
-use derive_more::Add;
 
 /// Adapted from https://doc.rust-lang.org/std/collections/binary_heap/
-
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Add)]
-pub struct Cost(usize);
-
-impl Ord for Cost {
-    fn cmp(&self, other: &Cost) -> Ordering {
-        other.0.cmp(&self.0).reverse()
-    }
-}
-
-impl PartialOrd for Cost {
-    fn partial_cmp(&self, other: &Cost) -> Option<Ordering> {
-        Some(other.cmp(&self))
-    }
-}
-
-
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct State {
